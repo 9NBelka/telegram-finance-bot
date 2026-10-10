@@ -6,7 +6,7 @@ const required = [
   'BOT_TOKEN',
   'TELEGRAM_USER_ID',
   'SPREADSHEET_ID',
-  'GOOGLE_APPLICATION_CREDENTIALS',
+  'GOOGLE_SERVICE_ACCOUNT_JSON',
 ] as const;
 
 for (const key of required) {
@@ -24,10 +24,31 @@ const bot = new Telegraf(process.env.BOT_TOKEN!);
 const spreadsheetId = process.env.SPREADSHEET_ID!;
 const sheetName = 'Операции';
 
+const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON!;
+
+let serviceAccount: {
+  client_email: string;
+  private_key: string;
+};
+
+try {
+  serviceAccount = JSON.parse(serviceAccountJson);
+} catch {
+  throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON содержит некорректный JSON.');
+}
+
+if (!serviceAccount.client_email || !serviceAccount.private_key) {
+  throw new Error('В Google credentials отсутствуют client_email или private_key.');
+}
+
 const auth = new google.auth.GoogleAuth({
-  keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS!,
+  credentials: {
+    client_email: serviceAccount.client_email,
+    private_key: serviceAccount.private_key,
+  },
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
+
 const sheets = google.sheets({ version: 'v4', auth });
 
 type Transaction = {
